@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lucky Brainrot Blocks Online - Ultimate Edition</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; user-select: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: #000; color: #fff; }
+
+        #canvas-container { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
+        #crosshair { position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; background: rgba(255, 255, 255, 0.9); border: 2px solid #000; border-radius: 50%; transform: translate(-50%, -50%); pointer-events: none; z-index: 10; }
+
+        /* Login Modal */
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 9999; display: flex; align-items: center; justify-content: center; }
+        .login-box { background: #181824; border: 2px solid #ff0055; border-radius: 16px; padding: 30px; width: 380px; text-align: center; box-shadow: 0 0 30px rgba(255, 0, 85, 0.4); }
+        .login-box h1 { margin-top: 0; color: #ffcc00; font-size: 24px; text-shadow: 0 0 10px rgba(255,204,0,0.5); }
+        .login-box input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 8px; border: 1px solid #333; background: #0d0d14; color: #fff; text-align: center; font-size: 16px; }
+        .login-box button { width: 100%; padding: 12px; border-radius: 8px; border: none; background: linear-gradient(45deg, #ff0055, #ff5500); color: #fff; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.2s; }
+        .login-box button:hover { transform: scale(1.02); filter: brightness(1.2); }
+
+        /* Top Bar & HUD */
+        #top-bar { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; z-index: 10; background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.2); backdrop-filter: blur(5px); }
+        .hud-btn { background: #1e1e2d; border: 1px solid #ffcc00; color: #ffcc00; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 6px; }
+        .hud-btn:hover { background: #ffcc00; color: #000; }
+        .hud-btn.sell { background: #00b894; border-color: #55efc4; color: #fff; font-size: 16px; }
+        .hud-btn.sell:hover { background: #55efc4; color: #000; }
+        .hud-btn.admin { background: #d63031; border-color: #ff7675; color: #fff; display: none; }
+
+        #stats-hud { position: absolute; top: 15px; right: 20px; z-index: 10; background: rgba(0,0,0,0.7); padding: 15px; border-radius: 12px; border: 1px solid #333; text-align: right; }
+        .stat-val { font-weight: bold; color: #ffd700; }
+
+        #zone-indicator { position: absolute; top: 15px; left: 20px; z-index: 10; background: rgba(0,0,0,0.7); padding: 10px 18px; border-radius: 12px; border: 1px solid #ff0055; color: #ff0055; font-weight: bold; font-size: 18px; text-shadow: 0 0 8px rgba(255,0,85,0.5); }
+
+        #controls-hint { position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(0,0,0,0.7); padding: 8px 20px; border-radius: 20px; font-size: 13px; color: #aaa; text-align: center; border: 1px solid #333; }
+
+        /* Modals */
+        .modal { display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #12121c; border: 2px solid #ffcc00; color: #fff; padding: 25px; border-radius: 16px; width: 420px; max-width: 90vw; z-index: 100; box-shadow: 0 0 40px rgba(0,0,0,0.9); }
+        .modal h2 { margin-top: 0; color: #ffcc00; text-align: center; font-size: 22px; }
+        .modal-btn { width: 100%; padding: 10px; margin: 6px 0; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; background: #ffcc00; color: #000; transition: 0.2s; }
+        .modal-btn:hover { background: #ffe600; }
+        .close-btn { background: #444; color: #fff; margin-top: 15px; }
+        .close-btn:hover { background: #666; }
+
+        /* Admin Console Panel */
+        #admin-modal { border-color: #ff0055; width: 550px; background: #0c0c14; }
+        #admin-modal h2 { color: #ff0055; text-shadow: 0 0 10px rgba(255,0,85,0.6); }
+        .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+        .admin-btn { background: #22121e; border: 1px solid #ff0055; color: #ff7675; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; font-size: 13px; }
+        .admin-btn:hover { background: #ff0055; color: #fff; }
+        .admin-slider-container { grid-column: span 2; background: #161622; padding: 10px; border-radius: 8px; border: 1px solid #333; margin-top: 5px; }
+        .admin-slider-container label { display: block; margin-bottom: 5px; font-size: 13px; color: #ffcc00; }
+        .admin-slider-container input { width: 100%; }
+
+        #inv-list { max-height: 180px; overflow-y: auto; margin: 15px 0; padding: 5px; background: #0a0a10; border-radius: 8px; border: 1px solid #222; }
+        .inv-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #1a1a26; font-size: 14px; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <h1>LUCKY BRAINROT 3D</h1>
+            <p style="color: #aaa; font-size: 13px;">הזן דוא"ל להתחברות לעולם</p>
+            <input type="email" id="user-email" placeholder="הכנס את המייל שלך..." autocomplete="off">
+            <button onclick="login()">התחל לשחק 🚀</button>
+        </div>
+    </div>
+
+    <div id="canvas-container"></div>
+    <div id="crosshair"></div>
+
+    <div id="zone-indicator">ZONE 1: GRASS BASE</div>
+
+    <div id="top-bar">
+        <button class="hud-btn sell" onclick="sellAllBrainrots()">💰 SELL ALL ($)</button>
+        <button class="hud-btn" onclick="openModal('inv-modal')">🎒 תיק (R)</button>
+        <button class="hud-btn" onclick="openModal('shop-modal')">🛒 חנות (T)</button>
+        <button class="hud-btn" onclick="openModal('rebirth-modal')">🔄 Rebirth (B)</button>
+        <button class="hud-btn" onclick="toggleMouseLock()">🔓 עכבר (V)</button>
+        <button id="admin-top-btn" class="hud-btn admin" onclick="openAdminModal()">👑 ADMIN (F2)</button>
+    </div>
+
+    <div id="stats-hud">
+        מטבעות: <span id="coins-display" class="stat-val">0</span> $<br>
+        תיק: <span id="inv-count" class="stat-val">0</span>/<span id="inv-max" class="stat-val">5</span><br>
+        Rebirths: <span id="rebirth-display" class="stat-val">0</span><br>
+        מזל: <span id="luck-display" class="stat-val">x1.0</span>
+    </div>
+
+    <div id="controls-hint">WASD: תנועה | רווח: קפיצה | E / קליק: שבירה | V: שחרור עכבר</div>
+
+    <!-- Inventory Modal -->
+    <div id="inv-modal" class="modal">
+        <h2>🎒 התיק שלי</h2>
+        <div id="inv-list"></div>
+        <button class="modal-btn" onclick="sellAllBrainrots()">מכור הכל ($)</button>
+        <button class="modal-btn close-btn" onclick="closeModals()">סגור</button>
+    </div>
+
+    <!-- Shop Modal -->
+    <div id="shop-modal" class="modal">
+        <h2>🛒 חנות שדרוגים</h2>
+        <button class="modal-btn" onclick="buyUpgrade('speed')">שדרוג מהירות תנועה (<span id="cost-speed">50</span>$)</button>
+        <button class="modal-btn" onclick="buyUpgrade('capacity')">הגדלת נפח תיק (<span id="cost-cap">100</span>$)</button>
+        <button class="modal-btn" onclick="buyUpgrade('luck')">שדרוג מזל אישי (<span id="cost-luck">150</span>$)</button>
+        <button class="modal-btn close-btn" onclick="closeModals()">סגור</button>
+    </div>
+
+    <!-- Rebirth Modal -->
+    <div id="rebirth-modal" class="modal">
+        <h2>🔄 מערכת REBIRTH</h2>
+        <p style="text-align: center; color: #ccc; font-size: 14px;">כל Rebirth מאפס מטבעות ותיק, מעלה את המזל הקבוע שלך ומשגר אותך ל-Zone חדש וענקי!</p>
+        <p style="text-align: center; font-weight: bold;">מחיר: <span id="rebirth-cost" style="color: #ffd700;">1,000</span> $</p>
+        <button class="modal-btn" style="background: #00b894; color: #fff;" onclick="doRebirth()">בצע REBIRTH עכשיו! 🌟</button>
+        <button class="modal-btn close-btn" onclick="closeModals()">סגור</button>
+    </div>
+
+    <!-- Admin Console Modal -->
+    <div id="admin-modal" class="modal">
+        <h2>👑 DEVELOPER ADMIN CONSOLE</h2>
+        <div class="admin-slider-container">
+            <label>מזל עולמי (Global Luck Multiplier): <span id="global-luck-val" style="color:#ff0055; font-weight:bold;">x1</span></label>
+            <input type="range" id="global-luck-slider" min="1" max="100000" value="1" oninput="setGlobalLuck(this.value)">
+        </div>
+        <div class="admin-grid">
+            <button class="admin-btn" onclick="adminAddCoins()">💰 +1,000,000,000 $</button>
+            <button class="admin-btn" onclick="adminMaxRebirth()">🔄 Instant Rebirth MAX</button>
+            <button class="admin-btn" onclick="adminToggleFly()">⚡ God Speed / Fly Mode</button>
+            <button class="admin-btn" onclick="adminBrainrotRain()">🌧️ Brainrot Rain</button>
+            <button class="admin-btn" onclick="adminNukeBlocks()">💥 Nuke Spawn Blocks</button>
+            <button class="admin-btn" onclick="adminBanPlayerPrompt()">🔨 Ban Player (IP/Device)</button>
+            <button class="admin-btn" onclick="adminTeleportZonePrompt()">🌀 Teleport Zone (1-10)</button>
+            <button class="admin-btn" onclick="adminResetAll()">⚠️ Reset World State</button>
+        </div>
+        <button class="modal-btn close-btn" onclick="closeModals()">סגור פאנל</button>
+    </div>
+
+    <script>
+        // --- ADMIN EMAIL CONFIGURATION ---
+        const ADMIN_EMAIL = "cohenmiel@gmail.com";
+        let isCreatorAdmin = false;
+
+        function login() {
+            const inputEmail = document.getElementById('user-email').value.trim().toLowerCase();
+
+            if (inputEmail === ADMIN_EMAIL.toLowerCase()) {
+                isCreatorAdmin = true;
+                document.getElementById('admin-top-btn').style.display = 'flex';
+                document.getElementById('controls-hint').innerText = "WASD: תנועה | רווח: קפיצה | E / קליק: שבירה | V: שחרור עכבר | F2: פאנל אדמין (אדמין מאושר)";
+                alert('👑 שלום מיאל! הרשאות אדמין הופעלו בהצלחה.');
+            } else {
+                isCreatorAdmin = false;
+                document.getElementById('admin-top-btn').style.display = 'none';
+                alert('נכנסת כמשתמש רגיל.');
+            }
+
+            document.getElementById('login-overlay').style.display = 'none';
+            document.body.requestPointerLock();
+        }
+
+        function openAdminModal() {
+            if (!isCreatorAdmin) {
+                alert("❌ גישה נדחתה! רק למשתמש cohenmiel@gmail.com יש גישה לפאנל זה.");
+                return;
+            }
+            openModal('admin-modal');
+        }
+
+        // --- Game Logic & State ---
+        let coins = 0;
+        let inventory = [];
+        let maxInventory = 5;
+        let moveSpeed = 0.25;
+        let personalLuck = 1.0;
+        let globalLuck = 1.0;
+        let rebirths = 0;
+        let isFlyMode = false;
+
+        let currentZoneIndex = 0;
+
+        const upgradeCosts = { speed: 50, capacity: 100, luck: 150 };
+
+        const zones = [
+            { name: "ZONE 1: GRASS BASE", color: 0x55aa55, sky: 0x87ceeb, posZ: 0 },
+            { name: "ZONE 2: LAVA DESERT", color: 0xd35400, sky: 0xedbb99, posZ: -2000 },
+            { name: "ZONE 3: CYBER NEON", color: 0x8e44ad, sky: 0x2c3e50, posZ: -4000 },
+            { name: "ZONE 4: CRYSTAL ICE", color: 0x2980b9, sky: 0xa9cce3, posZ: -6000 },
+            { name: "ZONE 5: COSMIC VOID", color: 0x111122, sky: 0x050510, posZ: -8000 },
+            { name: "ZONE 6: GOLDEN REALM", color: 0xf1c40f, sky: 0xf9e79f, posZ: -10000 },
+            { name: "ZONE 7: SHADOW DIMENSION", color: 0x2c3e50, sky: 0x1a252f, posZ: -12000 },
+            { name: "ZONE 8: TOXIC WASTELAND", color: 0x27ae60, sky: 0xabebc6, posZ: -14000 },
+            { name: "ZONE 9: QUANTUM MATRIX", color: 0x16a085, sky: 0xa3e4d7, posZ: -16000 },
+            { name: "ZONE 10: CREATOR GOD REALM", color: 0xe74c3c, sky: 0xfadbd8, posZ: -18000 }
+        ];
+
+        const brainrots = [
+            { name: 'Common Skibidi Toilet', chance: 0.50, val: 15, color: 0xcccccc },
+            { name: 'Rare Mewing Mogger', chance: 0.28, val: 50, color: 0x3498db },
+            { name: 'Epic Grimace Shake', chance: 0.14, val: 180, color: 0x9b59b6 },
+            { name: 'Legendary Rizzler Crown', chance: 0.06, val: 600, color: 0xf1c40f },
+            { name: 'Divine Sigma Kai Crystal', chance: 0.015, val: 2500, color: 0xe74c3c },
+            { name: 'CREATOR OVERLORD OMEGA', chance: 0.005, val: 15000, color: 0x00ffff }
+        ];
+
+        // --- Sound Effects ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+            if (type === 'break') {
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(40, now + 0.15);
+                gain.gain.setValueAtTime(0.3, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.15);
+                osc.start(now); osc.stop(now + 0.15);
+            } else if (type === 'sell') {
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.exponentialRampToValueAtTime(800, now + 0.2);
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
+            } else if (type === 'rebirth') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.5);
+                gain.gain.setValueAtTime(0.4, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.5);
+                osc.start(now); osc.stop(now + 0.5);
+            }
+        }
+
+        // --- Three.js Engine Setup ---
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(zones[0].sky);
+        scene.fog = new THREE.FogExp2(zones[0].sky, 0.002);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 50000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        container.appendChild(renderer.domElement);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        scene.add(ambientLight);
+
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(50, 100, 50);
+        dirLight.castShadow = true;
+        scene.add(dirLight);
+
+        // --- Build Massive World Zones ---
+        const blocks = [];
+
+        function createLuckyTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256; canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffd700'; ctx.fillRect(0, 0, 256, 256);
+            ctx.strokeStyle = '#b8860b'; ctx.lineWidth = 16; ctx.strokeRect(8, 8, 240, 240);
+            ctx.fillStyle = '#000'; ctx.font = 'bold 160px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillText('?', 128, 128);
+            return new THREE.CanvasTexture(canvas);
+        }
+        const blockMat = new THREE.MeshStandardMaterial({ map: createLuckyTexture(), roughness: 0.3 });
+        const blockGeo = new THREE.BoxGeometry(2, 2, 2);
+
+        zones.forEach((z, idx) => {
+            const gGeo = new THREE.BoxGeometry(800, 2, 800);
+            const gMat = new THREE.MeshStandardMaterial({ color: z.color });
+            const ground = new THREE.Mesh(gGeo, gMat);
+            ground.position.set(0, -1, z.posZ);
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // 40 בלוקים בכל אזור
+            for (let i = 0; i < 40; i++) {
+                const b = new THREE.Mesh(blockGeo, blockMat);
+                b.position.set((Math.random() - 0.5) * 700, 1.5, z.posZ + (Math.random() - 0.5) * 700);
+                b.castShadow = true;
+                b.zoneIdx = idx;
+                scene.add(b);
+                blocks.push(b);
+            }
+        });
+
+        // --- Controls & Camera Movement ---
+        const player = { height: 1.8, velocityY: 0, isGrounded: true };
+        camera.position.set(0, player.height, 0);
+
+        const keys = {};
+        let yaw = 0, pitch = 0;
+        let isPointerLocked = false;
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'KeyR') openModal('inv-modal');
+            if (e.code === 'KeyT') openModal('shop-modal');
+            if (e.code === 'KeyB') openModal('rebirth-modal');
+            if (e.code === 'KeyV') toggleMouseLock();
+            if (e.code === 'F2') { e.preventDefault(); openAdminModal(); }
+            if (e.code === 'KeyE') interact();
+        });
+        document.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        document.body.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'INPUT' && !isPointerLocked) {
+                document.body.requestPointerLock();
+            }
+        });
+
+        document.addEventListener('pointerlockchange', () => {
+            isPointerLocked = (document.pointerLockElement === document.body);
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isPointerLocked) {
+                yaw -= e.movementX * 0.002;
+                pitch -= e.movementY * 0.002;
+                pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
+                camera.rotation.order = 'YXZ';
+                camera.rotation.y = yaw;
+                camera.rotation.x = pitch;
+            }
+        });
+
+        function toggleMouseLock() {
+            if (isPointerLocked) document.exitPointerLock();
+            else document.body.requestPointerLock();
+        }
+
+        // --- Interaction & Fast Respawn Block Break ---
+        const raycaster = new THREE.Raycaster();
+        const centerVec = new THREE.Vector2(0, 0);
+
+        window.addEventListener('mousedown', (e) => {
+            if (e.button === 0 && isPointerLocked) interact();
+        });
+
+        function interact() {
+            raycaster.setFromCamera(centerVec, camera);
+            const intersects = raycaster.intersectObjects(blocks);
+
+            if (intersects.length > 0 && intersects[0].distance < 6) {
+                breakBlock(intersects[0].object);
+            }
+        }
+
+        function breakBlock(block) {
+            if (inventory.length >= maxInventory) {
+                alert("התיק שלך מלא! לחץ על SELL ALL למעלה כדי למכור.");
+                return;
+            }
+
+            playSound('break');
+
+            const totalLuck = personalLuck * globalLuck * (1 + block.zoneIdx * 0.5);
+            let roll = Math.random() / totalLuck;
+            let selected = brainrots[0];
+
+            let cumulative = 0;
+            for (let b of brainrots) {
+                cumulative += b.chance;
+                if (roll <= cumulative) { selected = b; break; }
+            }
+
+            inventory.push(selected);
+            updateUI();
+
+            // Particle effect
+            const pGeo = new THREE.SphereGeometry(0.6, 12, 12);
+            const pMat = new THREE.MeshStandardMaterial({ color: selected.color, emissive: selected.color, emissiveIntensity: 0.5 });
+            const p = new THREE.Mesh(pGeo, pMat);
+            p.position.copy(block.position);
+            scene.add(p);
+
+            // זימון מהיר מחדש במיקום חדש
+            block.visible = false;
+            setTimeout(() => {
+                const z = zones[block.zoneIdx];
+                block.position.set((Math.random() - 0.5) * 700, 1.5, z.posZ + (Math.random() - 0.5) * 700);
+                block.visible = true;
+            }, 100);
+
+            setTimeout(() => scene.remove(p), 800);
+        }
+
+        // --- Gameplay UI Actions ---
+        function updateUI() {
+            document.getElementById('coins-display').innerText = coins.toLocaleString();
+            document.getElementById('inv-count').innerText = inventory.length;
+            document.getElementById('inv-max').innerText = maxInventory;
+            document.getElementById('rebirth-display').innerText = rebirths;
+            document.getElementById('luck-display').innerText = `x${(personalLuck * globalLuck).toFixed(1)}`;
+            document.getElementById('rebirth-cost').innerText = (Math.pow(5, rebirths) * 1000).toLocaleString();
+
+            const invList = document.getElementById('inv-list');
+            invList.innerHTML = '';
+            inventory.forEach((item) => {
+                invList.innerHTML += `<div class="inv-item"><span style="color:${'#'+item.color.toString(16)}">${item.name}</span> <span>${item.val}$</span></div>`;
+            });
+        }
+
+        function sellAllBrainrots() {
+            if (inventory.length === 0) return;
+            let total = inventory.reduce((sum, item) => sum + item.val, 0);
+            coins += total;
+            inventory = [];
+            playSound('sell');
+            updateUI();
+        }
+
+        function buyUpgrade(type) {
+            if (coins >= upgradeCosts[type]) {
+                coins -= upgradeCosts[type];
+                if (type === 'speed') moveSpeed += 0.08;
+                if (type === 'capacity') maxInventory += 5;
+                if (type === 'luck') personalLuck += 0.5;
+
+                upgradeCosts[type] = Math.floor(upgradeCosts[type] * 1.8);
+                document.getElementById(`cost-${type === 'capacity' ? 'cap' : type}`).innerText = upgradeCosts[type];
+                updateUI();
+            } else alert("אין לך מספיק מטבעות!");
+        }
+
+        function doRebirth() {
+            const cost = Math.pow(5, rebirths) * 1000;
+            if (coins >= cost) {
+                coins = 0;
+                inventory = [];
+                rebirths++;
+                personalLuck += 1.5;
+                playSound('rebirth');
+
+                currentZoneIndex = Math.min(rebirths, zones.length - 1);
+                camera.position.set(0, player.height, zones[currentZoneIndex].posZ);
+
+                scene.background.setHex(zones[currentZoneIndex].sky);
+                scene.fog.color.setHex(zones[currentZoneIndex].sky);
+                document.getElementById('zone-indicator').innerText = zones[currentZoneIndex].name;
+
+                closeModals();
+                updateUI();
+            } else alert("אין לך מספיק מטבעות ל-Rebirth!");
+        }
+
+        // --- Modals Management ---
+        function openModal(id) {
+            closeModals();
+            document.getElementById(id).style.display = 'block';
+            document.exitPointerLock();
+        }
+
+        function closeModals() {
+            document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+            document.body.requestPointerLock();
+        }
+
+        // --- Creator Admin Console Functions ---
+        function setGlobalLuck(val) {
+            if (!isCreatorAdmin) return;
+            globalLuck = parseFloat(val);
+            document.getElementById('global-luck-val').innerText = `x${globalLuck}`;
+            updateUI();
+        }
+
+        function adminAddCoins() { if (!isCreatorAdmin) return; coins += 1000000000; updateUI(); }
+        function adminMaxRebirth() { if (!isCreatorAdmin) return; rebirths = 9; doRebirth(); }
+        function adminToggleFly() { if (!isCreatorAdmin) return; isFlyMode = !isFlyMode; alert(`God Fly Mode: ${isFlyMode ? 'ENABLED' : 'DISABLED'}`); }
+        function adminBrainrotRain() {
+            if (!isCreatorAdmin) return;
+            for (let i = 0; i < 30; i++) {
+                inventory.push(brainrots[brainrots.length - 1]);
+            }
+            updateUI();
+        }
+        function adminNukeBlocks() {
+            if (!isCreatorAdmin) return;
+            blocks.forEach(b => {
+                if (b.position.distanceTo(camera.position) < 200) breakBlock(b);
+            });
+        }
+        function adminBanPlayerPrompt() {
+            if (!isCreatorAdmin) return;
+            const name = prompt("הכנס שם שחקן או IP לחסימה מהשרת:");
+            if (name) alert(`השחקן ${name} נחסם בהצלחה מכל המכשירים!`);
+        }
+        function adminTeleportZonePrompt() {
+            if (!isCreatorAdmin) return;
+            const zIdx = parseInt(prompt("לאיזה Zone להשתגר? (1-10)")) - 1;
+            if (zIdx >= 0 && zIdx < zones.length) {
+                currentZoneIndex = zIdx;
+                camera.position.set(0, player.height, zones[zIdx].posZ);
+                document.getElementById('zone-indicator').innerText = zones[zIdx].name;
+                scene.background.setHex(zones[zIdx].sky);
+                scene.fog.color.setHex(zones[zIdx].sky);
+                closeModals();
+            }
+        }
+        function adminResetAll() { if (!isCreatorAdmin) return; coins = 0; inventory = []; rebirths = 0; personalLuck = 1; updateUI(); }
+
+        // --- Main Render Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isPointerLocked) {
+                const moveVec = new THREE.Vector3();
+                if (keys['KeyW']) moveVec.z -= 1;
+                if (keys['KeyS']) moveVec.z += 1;
+                if (keys['KeyA']) moveVec.x -= 1;
+                if (keys['KeyD']) moveVec.x += 1;
+
+                moveVec.normalize();
+                moveVec.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+
+                camera.position.x += moveVec.x * moveSpeed;
+                camera.position.z += moveVec.z * moveSpeed;
+
+                if (isFlyMode) {
+                    if (keys['Space']) camera.position.y += moveSpeed;
+                    if (keys['ShiftLeft']) camera.position.y -= moveSpeed;
+                } else {
+                    if (keys['Space'] && player.isGrounded) {
+                        player.velocityY = 0.22;
+                        player.isGrounded = false;
+                    }
+
+                    camera.position.y += player.velocityY;
+                    player.velocityY -= 0.009;
+
+                    if (camera.position.y <= player.height) {
+                        camera.position.y = player.height;
+                        player.velocityY = 0;
+                        player.isGrounded = true;
+                    }
+                }
+
+                // Check Current Zone by Position
+                const curZPos = camera.position.z;
+                zones.forEach((z, idx) => {
+                    if (Math.abs(curZPos - z.posZ) < 400 && currentZoneIndex !== idx) {
+                        currentZoneIndex = idx;
+                        document.getElementById('zone-indicator').innerText = z.name;
+                        scene.background.setHex(z.sky);
+                        scene.fog.color.setHex(z.sky);
+                    }
+                });
+            }
+
+            // Animate Floating Lucky Blocks
+            blocks.forEach(b => {
+                if (b.visible) {
+                    b.rotation.y += 0.015;
+                    b.position.y = 1.5 + Math.sin(Date.now() * 0.004 + b.position.x) * 0.25;
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
